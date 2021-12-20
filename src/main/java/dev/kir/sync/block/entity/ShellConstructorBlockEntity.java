@@ -6,10 +6,13 @@ import dev.kir.sync.api.shell.ShellStateContainer;
 import dev.kir.sync.api.event.PlayerSyncEvents;
 import dev.kir.sync.block.AbstractShellContainerBlock;
 import dev.kir.sync.block.ShellConstructorBlock;
+import dev.kir.sync.config.SyncConfig;
 import dev.kir.sync.entity.damage.FingerstickDamageSource;
+import dev.kir.sync.Sync;
 import net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -21,8 +24,6 @@ import team.reborn.energy.api.EnergyStorage;
 
 @SuppressWarnings({"deprecation", "UnstableApiUsage"})
 public class ShellConstructorBlockEntity extends AbstractShellContainerBlockEntity implements EnergyStorage {
-    private static final float LF_AMOUNT = 256000;
-
     public ShellConstructorBlockEntity(BlockPos pos, BlockState state) {
         super(SyncBlockEntities.SHELL_CONSTRUCTOR, pos, state);
     }
@@ -57,12 +58,22 @@ public class ShellConstructorBlockEntity extends AbstractShellContainerBlockEnti
         }
 
         if (player instanceof ServerPlayerEntity serverPlayer) {
-            float damage = player.getMaxHealth();
-            if (serverPlayer.server.isHardcore()) {
-                damage *= 2;
+            SyncConfig config = Sync.getConfig();
+
+            float damage = serverPlayer.server.isHardcore() ? config.hardcoreFingerstickDamage : config.fingerstickDamage;
+
+            boolean isCreative = !serverPlayer.interactionManager.getGameMode().isSurvivalLike();
+            boolean isLowOnHealth = (player.getHealth() + player.getAbsorptionAmount()) <= damage;
+            boolean hasTotemOfUndying = player.getMainHandStack().isOf(Items.TOTEM_OF_UNDYING) || player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING);
+            if (isLowOnHealth && !isCreative && !hasTotemOfUndying && config.warnPlayerInsteadOfKilling) {
+                return PlayerSyncEvents.ShellConstructionFailureReason.NOT_ENOUGH_HEALTH;
             }
+
             player.damage(FingerstickDamageSource.getInstance(), damage);
             this.shell = ShellState.empty(serverPlayer, pos);
+            if (isCreative && config.enableInstantShellConstruction) {
+                this.shell.setProgress(ShellState.PROGRESS_DONE);
+            }
         }
         return null;
     }
@@ -89,21 +100,16 @@ public class ShellConstructorBlockEntity extends AbstractShellContainerBlockEnti
 
     @Override
     public long insert(long amount, TransactionContext context) {
-        if (!AbstractShellContainerBlock.isBottom(this.getCachedState())) {
-            if (this.getSecondPart().orElse(null) instanceof EnergyStorage energyStorage) {
-                return energyStorage.insert(amount, context);
-            }
+        ShellConstructorBlockEntity bottom = (ShellConstructorBlockEntity)this.getBottomPart().orElse(null);
+        if (bottom == null || bottom.shell == null || bottom.shell.getProgress() >= ShellState.PROGRESS_DONE) {
             return 0;
         }
 
-        if (this.shell == null || this.shell.getProgress() >= ShellState.PROGRESS_DONE) {
-            return 0;
-        }
-
-        long maxEnergy = (long)((ShellState.PROGRESS_DONE - this.shell.getProgress()) * LF_AMOUNT);
+        long requiredEnergyAmount = Sync.getConfig().shellConstructorCapacity;
+        long maxEnergy = (long)((ShellState.PROGRESS_DONE - bottom.shell.getProgress()) * requiredEnergyAmount);
         context.addCloseCallback((ctx, result) -> {
             if (result.wasCommitted()) {
-                this.shell.setProgress(this.shell.getProgress() + (float)amount / LF_AMOUNT);
+                bottom.shell.setProgress(bottom.shell.getProgress() + (float)amount / requiredEnergyAmount);
             }
         });
         return MathHelper.clamp(amount, 0, maxEnergy);
@@ -116,5 +122,6 @@ public class ShellConstructorBlockEntity extends AbstractShellContainerBlockEnti
 
     static {
         ShellStateContainer.LOOKUP.registerForBlockEntity((x, s) -> x.hasWorld() && AbstractShellContainerBlock.isBottom(x.getCachedState()) && (s == null || s.equals(x.getShellState())) ? x : null, SyncBlockEntities.SHELL_CONSTRUCTOR);
+        EnergyStorage.SIDED.registerForBlockEntities((x, __) -> (EnergyStorage)x, SyncBlockEntities.SHELL_CONSTRUCTOR);
     }
 }

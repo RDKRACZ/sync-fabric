@@ -9,10 +9,10 @@
   ],
   "contact": {
     "website": "https://github.com/Kir-Antipov/sync-fabric",
-    "repo": "https://github.com/Kir-Antipov/sync-fabric",
+    "sources": "https://github.com/Kir-Antipov/sync-fabric",
     "issues": "https://github.com/Kir-Antipov/sync-fabric/issues/new/choose"
   },
-  "license": "LGPL-3.0",
+  "license": "MIT",
   "icon": "assets/sync/icon.png",
   "environment": "*",
   "entrypoints": {
@@ -23,6 +23,9 @@
     "client": [
       "dev.kir.sync.Sync"
     ],
+    "modmenu": [
+      "dev.kir.sync.compat.modmenu.ModMenuCompat"
+    ],
     "cardinal-components-entity": [
       "dev.kir.sync.compat.trinkets.TrinketsCompat"
     ]
@@ -31,10 +34,27 @@
     "sync.mixins.json"
   ],
   "accessWidener": "sync.accesswidener",
+  "custom": {
+    "modmanager": {
+      "modrinth": "OrJTMhHF",
+      "curseforge": 515365
+    }
+  },
   "depends": {
     "fabric": "*",
     "fabricloader": "${fabric}",
     "minecraft": "${minecraft}",
     "java": ">=16"
+  },
+  "includes": {
+    "smart-recipes": "${smart_recipes}",
+    "cloth-config": "${cloth_config}",
+    "crowdin-translate": "${crowdin_translate}",
+    "team_reborn_energy": "${team_reborn_energy}"
+  },
+  "suggests": {
+    "modmenu": "${modmenu}",
+    "trinkets": "${trinkets}",
+    "requiem": "${requiem}"
   }
 }

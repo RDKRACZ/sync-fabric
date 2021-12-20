@@ -48,6 +48,13 @@ repositories {
         url = "https://ladysnake.jfrog.io/artifactory/mods"
     }
     maven {
+        name = "Cloth Config"
+        url = "https://maven.shedaniel.me/"
+        content {
+            includeGroup "me.shedaniel.cloth"
+        }
+    }
+    maven {
         name = "Nexus OSS Repository"
         url = "https://oss.sonatype.org/content/repositories/snapshots"
     }
@@ -73,13 +80,13 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     modImplementation(include("de.guntram.mcmod:crowdin-translate:${project.crowdin_translate_version}"))
+    modImplementation(include("teamreborn:energy:${project.tr_energy_version}"))
+    modImplementation(include("maven.modrinth:smart-recipes:${project.smartrecipes_version}"))
+    modImplementation(include("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_version}"), {
+        exclude group: "net.fabricmc.fabric-api"
+    })
 
-    modImplementation "teamreborn:energy:${project.tr_energy_version}"
-    include "teamreborn:energy:${project.tr_energy_version}"
-
-    modImplementation "maven.modrinth:smart-recipes:${project.smartrecipes_version}"
-    include "maven.modrinth:smart-recipes:${project.smartrecipes_version}"
-
+    modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
     modImplementation "dev.emi:trinkets:${project.trinkets_version}"
     modImplementation "io.github.ladysnake:requiem-api:${project.requiem_version}"
 
@@ -93,7 +100,14 @@ processResources {
     def fabricModProperties = [
         "version": version,
         "fabric": ">=${loaderDependencyVersion}",
-        "minecraft": minecraftDependencyVersion.replaceFirst(/^(\d+\.\d+)(\.\d+|)$/, '$1.x')
+        "minecraft": ">=${minecraftDependencyVersion}",
+        "smart_recipes": project.smartrecipes_version,
+        "cloth_config": project.cloth_version,
+        "crowdin_translate": project.crowdin_translate_version,
+        "team_reborn_energy": project.tr_energy_version,
+        "modmenu": ">=${project.modmenu_version}",
+        "trinkets": ">=${project.trinkets_version}",
+        "requiem": ">=${project.requiem_version}"
     ]
 
     filesMatching("fabric.mod.json") {
